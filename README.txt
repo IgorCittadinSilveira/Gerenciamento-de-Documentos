@@ -5,5 +5,6 @@
 5- Colocar o comando 'Composer create-project laravel/laravel'
 6- Rodar o comando 'npm install'
 7- Roda o comando 'npm install bootstrap'
-8- Rodar o comando 'php artisan serve' 
+8- Rodar o 'npm run build'
+9- Rodar o comando 'php artisan serve' 
 
