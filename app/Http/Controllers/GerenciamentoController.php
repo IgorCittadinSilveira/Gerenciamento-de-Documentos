@@ -8,13 +8,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\models\Documento;
 use App\models\DocumentoVersion;
+use App\models\User;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class GerenciamentoController extends Controller
 {
 
-  //Função da tela padrão do Gerenciamento
-  public function index(Request $request)
+//Função da tela padrão do Gerenciamento
+ public function index(Request $request)
       {
 
         $search = request('search');
@@ -34,17 +35,18 @@ class GerenciamentoController extends Controller
         return view('gerenciamento.index', ['search' => $search])->with('documentos', $documentos)->with('mensagemSucesso', $mensagemSucesso);
       }
 
-      //Função para acessar a View de create
-  public function create()
+//Função para acessar a View create
+ public function create()
       {
-        return view('gerenciamento.create');
+        $users = User::all();
+
+    
+        return view('gerenciamento.create', compact('users'));
       }
 
-      //Função para adicionar um novo Documento
-  public function store(GerenciamentoFormRequest $request)
+//Função para adicionar um novo Documento
+ public function store(GerenciamentoFormRequest $request)
       {
-
-    $publico = $request->has('publico') ? 1 : 0;
 
     if ($request->hasFile('file')) {
         $file = $request->file('file');
@@ -59,16 +61,17 @@ class GerenciamentoController extends Controller
         'localizacao' => $request->input('localizacao'),
         'categoria' => $request->input('categoria'),
         'data' => $request->input('data'),
-        'publico' => $publico,  
         'arquivo' => $path,     
         'created_at' => now(),
         'updated_at' => now(),
     ]);
 
+  
+
         return to_route('gerenciamento.index')->with('mensagem.sucesso', "Documento {$documento->nome} adcionada com sucesso");
       }
 
-      //Função para apagar um Documento
+//Função para apagar um Documento
  public function destroy($id)
       {
 
@@ -77,78 +80,68 @@ class GerenciamentoController extends Controller
         return to_route('gerenciamento.index')->with('mensagem.sucesso', "Documento'{$documento->nome}' removido com sucesso");
       }
 
-      //Função para acessar a view de edit
+//Função para acessar a view edit
  public function edit($id)
-      {
+      { $versions = DocumentoVersion::where('documento_id', $id)->get();
 
         $documento = Documento::findOrFail($id);
-        $versions = DocumentoVersion::where('documento_id', $id)->get();
-
-       // return view('gerenciamento.edit')->with('documento',$documento); 
-   //     return view('gerenciamento.edit', [
-     //     'documento' => $documento,
-    //      'versions' => $versions
-    //  ]);
-    return view('gerenciamento.edit', compact('documento', 'versions'));
-  
+        $users = User::all();
+    
+        return view('gerenciamento.edit', compact('documento', 'users','versions'));
       }
 
-      //Função para atualizar um documento
-      public function update($id, GerenciamentoFormRequest $request)
+//Função para atualizar um documento
+ public function update($id, GerenciamentoFormRequest $request)
       {
-          // Recupera o documento original
+
           $documento = Documento::findOrFail($id);
       
-          // Salva a versão anterior do documento antes de atualizá-lo
+
           $documentoVersion = new DocumentoVersion();
           $documentoVersion->documento_id = $documento->id;
           $documentoVersion->nome = $documento->nome;
           $documentoVersion->localizacao = $documento->localizacao;
           $documentoVersion->categoria = $documento->categoria;
           $documentoVersion->data = $documento->data;
-          $documentoVersion->publico = $documento->publico;
           $documentoVersion->arquivo = $documento->arquivo;
-          $documentoVersion->save();  // Cria uma nova versão do documento no banco
-      
-          // Atualiza o documento com os novos dados
-          $publico = $request->has('publico') ? 1 : 0;
+          $documentoVersion->save();  
       
           if ($request->hasFile('file')) {
               $file = $request->file('file');
               $path = $file->store('uploads', 'public');
           } else {
-              // Se o arquivo não foi enviado, mantém o arquivo atual
               $path = $documento->arquivo;
           }
       
-          // Atualiza o documento
           $documento->update([
               'nome' => $request->input('nome'),
               'localizacao' => $request->input('localizacao'),
               'categoria' => $request->input('categoria'),
               'data' => $request->input('data'),
-              'publico' => $publico,
-              'arquivo' => $path,  // Atualiza o caminho do arquivo
+
+              'arquivo' => $path,
               'updated_at' => now(),
           ]);
-      
-          // Redireciona para a página de gerenciamento com a mensagem de sucesso
+   
+
+
+
           return to_route('gerenciamento.index')->with('mensagem.sucesso', "Documento '{$documento->nome}' editado com sucesso");
       }
 
-     
-  public function showRelatorios(Request $request)
+//Função para acessar a view index da pasta relatórios
+ public function showRelatorios(Request $request)
     {
         // Apenas exibe a página de relatórios, sem dados
         return view('relatorios.index');
     }
-
-  public function exportRelatorioCsv(Request $request)
+//Função para baixar o reltório
+ public function exportRelatorioCsv(Request $request)
     {
         $data_inicio = $request->input('data_inicio');
         $data_fim = $request->input('data_fim');
     
-        // Filtra os documentos entre as datas informadas
+
         $query = Documento::query();
     
         if ($data_inicio && $data_fim) {
@@ -157,14 +150,14 @@ class GerenciamentoController extends Controller
     
         $documentos = $query->get();
     
-        // Criação da resposta para enviar o CSV
+
         $response = new StreamedResponse(function() use ($documentos) {
             $handle = fopen('php://output', 'w');
     
-            // Adiciona o cabeçalho do CSV
+
             fputcsv($handle, ['Nome', 'Localizacao', 'Categoria', 'Data', 'Criado em', 'Atualizado em']);
     
-            // Adiciona os dados dos documentos
+
             foreach ($documentos as $documento) {
                 fputcsv($handle, [
                     $documento->nome,
@@ -179,15 +172,14 @@ class GerenciamentoController extends Controller
             fclose($handle);
         });
     
-        // Define os headers para forçar o download do arquivo CSV
         $response->headers->set('Content-Type', 'text/csv');
         $response->headers->set('Content-Disposition', 'attachment;filename="Relatorio.csv"');
         $response->headers->set('Cache-Control', 'max-age=0');
     
         return $response;
     }
-    
-  public function restoreVersion($versionId)
+//Função para restaurar versão
+ public function restoreVersion($versionId)
   {
     $version = DocumentoVersion::findOrFail($versionId);
 
@@ -200,7 +192,6 @@ class GerenciamentoController extends Controller
         'localizacao' => $version->localizacao,
         'categoria' => $version->categoria,
         'data' => $version->data,
-        'publico' => $version->publico,
         'arquivo' => $version->arquivo,
     ]);
     

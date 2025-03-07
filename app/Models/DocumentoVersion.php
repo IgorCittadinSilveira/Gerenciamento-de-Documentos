@@ -15,7 +15,6 @@ class DocumentoVersion extends Model
         'localizacao',
         'categoria',
         'data',
-        'publico',
         'arquivo',
     ];
 

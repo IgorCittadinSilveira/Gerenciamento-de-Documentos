@@ -4,7 +4,7 @@
     :localizacao="$documento->localizacao" 
     :categoria="$documento->categoria"
     :data="$documento->data"
-    :publico="$documento->publico"
+    :users="$users"
     :update="true"/>
 
 

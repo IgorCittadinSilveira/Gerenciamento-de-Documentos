@@ -4,6 +4,6 @@
     :localizacao="old('localizacao')" 
     :categoria="old('categoria')" 
     :data="old('data')"
-    :publico="old('publico')"
+    :users="$users" 
     :update="false"/>
 </x-layout>

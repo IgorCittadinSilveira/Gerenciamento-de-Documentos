@@ -26,11 +26,10 @@
                 
         </div>
 
-        <br>
-        <label for="publico">Publico:</label>
-        <input type="checkbox" name="publico" id="publico"  class="form-control" 
-        @isset($publico)value="{{$publico}}" @if($publico) checked @endif @endisset>
         </div>
+
         <button type="submit" class="btn btn-primary">Adicionar</button>
 
     </form>
+
+    
