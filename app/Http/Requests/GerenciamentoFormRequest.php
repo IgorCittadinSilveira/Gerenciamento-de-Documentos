@@ -25,7 +25,8 @@ class GerenciamentoFormRequest extends FormRequest
             'nome' => ['required'],
             'localizacao'=>['required'],
             'categoria'=>['required'],
-            'data'=>['required']
+            'data'=>['required'],
+            //'arquivo'=>['required']
         ];
     }
     public function messages()
@@ -34,7 +35,8 @@ class GerenciamentoFormRequest extends FormRequest
             'nome.required'=>'O campo Nome é obrigatório',
             'localizacao.required'=>'O campo Localizacao é obrigatório',
             'categoria.required'=>'O campo Categoria é obrigatório',
-            'data.required'=>'O campo Data é obrigatório'
+            'data.required'=>'O campo Data é obrigatório',
+            'arquivo.required'=>'O campo Arquivo é obrigatório'
         ];
     }
 }

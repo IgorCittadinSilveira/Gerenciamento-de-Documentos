@@ -6,4 +6,16 @@
     :data="$documento->data"
     :publico="$documento->publico"
     :update="true"/>
+
+
+<h3>Versões</h3>
+
+      @foreach($versions as $version)
+<div   class="mb-3">      
+        
+        <span>Versão: {{ $version->nome }}</span>
+        <a href="{{ route('gerenciamento.restoreVersion', $version->id) }}">Restaurar</a>
+    </div>
+    @endforeach
+
 </x-layout>

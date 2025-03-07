@@ -1,16 +1,16 @@
-<x-layout title="Documentos">
+<x-layout title="Documentos" >
+
     @isset($mensagemSucesso)
 <div class="alert alert-success">
         {{$mensagemSucesso}}
 </div>
     @endisset
 
-    
     <form action="{{route ('gerenciamento.index')}}" method="GET">
     <input type="text" name="search" id="search" placeholder="Pesquisar">
     </form>
 
-    
+
 <ul class="list-group">
 
     @foreach ($documentos as $documento) 
@@ -59,8 +59,10 @@
     </li>
     @endif
         @endif
-    @endforeach    
+    @endforeach
+    
 </ul> 
-
 <a href="{{route('gerenciamento.create')}}" class="btn btn-dark mb-2">Adicionar</a>
+
+
 </x-layout>

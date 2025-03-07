@@ -7,9 +7,13 @@ use App\Http\Requests\GerenciamentoFormRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\models\Documento;
+use App\models\DocumentoVersion;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class GerenciamentoController extends Controller
 {
+
+  //Função da tela padrão do Gerenciamento
   public function index(Request $request)
       {
 
@@ -30,43 +34,41 @@ class GerenciamentoController extends Controller
         return view('gerenciamento.index', ['search' => $search])->with('documentos', $documentos)->with('mensagemSucesso', $mensagemSucesso);
       }
 
+      //Função para acessar a View de create
   public function create()
       {
         return view('gerenciamento.create');
       }
 
+      //Função para adicionar um novo Documento
   public function store(GerenciamentoFormRequest $request)
       {
 
-         // Verifique e defina o valor correto para o campo 'publico'
     $publico = $request->has('publico') ? 1 : 0;
 
-    // Verifica se um arquivo foi enviado e o faz o upload
     if ($request->hasFile('file')) {
         $file = $request->file('file');
-        $path = $file->store('uploads', 'public'); // Armazena o arquivo na pasta 'uploads' e retorna o caminho
+        $path = $file->store('uploads', 'public'); 
     } else {
-        // Se nenhum arquivo foi enviado, você pode definir um valor padrão ou tratar como erro
+ 
         return back()->with('error', 'Por favor, envie um arquivo');
     }
 
-    // Crie o documento, agora incluindo o caminho do arquivo
     $documento = Documento::create([
         'nome' => $request->input('nome'),
         'localizacao' => $request->input('localizacao'),
         'categoria' => $request->input('categoria'),
         'data' => $request->input('data'),
-        'publico' => $publico,  // Agora 'publico' é tratado corretamente
-        'arquivo' => $path,      // Caminho do arquivo que foi enviado
+        'publico' => $publico,  
+        'arquivo' => $path,     
         'created_at' => now(),
         'updated_at' => now(),
     ]);
-        //$documento = Documento::create($request->all());
-        //$publico = request()->has('publico') ? 1 : 0;
 
         return to_route('gerenciamento.index')->with('mensagem.sucesso', "Documento {$documento->nome} adcionada com sucesso");
       }
 
+      //Função para apagar um Documento
  public function destroy($id)
       {
 
@@ -74,61 +76,136 @@ class GerenciamentoController extends Controller
         $documento->delete();
         return to_route('gerenciamento.index')->with('mensagem.sucesso', "Documento'{$documento->nome}' removido com sucesso");
       }
+
+      //Função para acessar a view de edit
  public function edit($id)
       {
 
         $documento = Documento::findOrFail($id);
-        return view('gerenciamento.edit')->with('documento',$documento); 
+        $versions = DocumentoVersion::where('documento_id', $id)->get();
+
+       // return view('gerenciamento.edit')->with('documento',$documento); 
+   //     return view('gerenciamento.edit', [
+     //     'documento' => $documento,
+    //      'versions' => $versions
+    //  ]);
+    return view('gerenciamento.edit', compact('documento', 'versions'));
+  
       }
 
- public function update($id, GerenciamentoFormRequest  $request)
+      //Função para atualizar um documento
+      public function update($id, GerenciamentoFormRequest $request)
       {
+          // Recupera o documento original
+          $documento = Documento::findOrFail($id);
+      
+          // Salva a versão anterior do documento antes de atualizá-lo
+          $documentoVersion = new DocumentoVersion();
+          $documentoVersion->documento_id = $documento->id;
+          $documentoVersion->nome = $documento->nome;
+          $documentoVersion->localizacao = $documento->localizacao;
+          $documentoVersion->categoria = $documento->categoria;
+          $documentoVersion->data = $documento->data;
+          $documentoVersion->publico = $documento->publico;
+          $documentoVersion->arquivo = $documento->arquivo;
+          $documentoVersion->save();  // Cria uma nova versão do documento no banco
+      
+          // Atualiza o documento com os novos dados
+          $publico = $request->has('publico') ? 1 : 0;
+      
+          if ($request->hasFile('file')) {
+              $file = $request->file('file');
+              $path = $file->store('uploads', 'public');
+          } else {
+              // Se o arquivo não foi enviado, mantém o arquivo atual
+              $path = $documento->arquivo;
+          }
+      
+          // Atualiza o documento
+          $documento->update([
+              'nome' => $request->input('nome'),
+              'localizacao' => $request->input('localizacao'),
+              'categoria' => $request->input('categoria'),
+              'data' => $request->input('data'),
+              'publico' => $publico,
+              'arquivo' => $path,  // Atualiza o caminho do arquivo
+              'updated_at' => now(),
+          ]);
+      
+          // Redireciona para a página de gerenciamento com a mensagem de sucesso
+          return to_route('gerenciamento.index')->with('mensagem.sucesso', "Documento '{$documento->nome}' editado com sucesso");
+      }
 
-      // Encontre o documento com o ID fornecido
-    $documento = Documento::findOrFail($id);
+     
+  public function showRelatorios(Request $request)
+    {
+        // Apenas exibe a página de relatórios, sem dados
+        return view('relatorios.index');
+    }
 
-    // Verifique e defina o valor correto para o campo 'publico'
-    $publico = $request->has('publico') ? 1 : 0;
+  public function exportRelatorioCsv(Request $request)
+    {
+        $data_inicio = $request->input('data_inicio');
+        $data_fim = $request->input('data_fim');
+    
+        // Filtra os documentos entre as datas informadas
+        $query = Documento::query();
+    
+        if ($data_inicio && $data_fim) {
+            $query->whereBetween('data', [$data_inicio, $data_fim]);
+        }
+    
+        $documentos = $query->get();
+    
+        // Criação da resposta para enviar o CSV
+        $response = new StreamedResponse(function() use ($documentos) {
+            $handle = fopen('php://output', 'w');
+    
+            // Adiciona o cabeçalho do CSV
+            fputcsv($handle, ['Nome', 'Localizacao', 'Categoria', 'Data', 'Criado em', 'Atualizado em']);
+    
+            // Adiciona os dados dos documentos
+            foreach ($documentos as $documento) {
+                fputcsv($handle, [
+                    $documento->nome,
+                    $documento->localizacao,
+                    $documento->categoria,
+                    $documento->data,
+                    $documento->created_at,
+                    $documento->updated_at,
+                ]);
+            }
+    
+            fclose($handle);
+        });
+    
+        // Define os headers para forçar o download do arquivo CSV
+        $response->headers->set('Content-Type', 'text/csv');
+        $response->headers->set('Content-Disposition', 'attachment;filename="Relatorio.csv"');
+        $response->headers->set('Cache-Control', 'max-age=0');
+    
+        return $response;
+    }
+    
+  public function restoreVersion($versionId)
+  {
+    $version = DocumentoVersion::findOrFail($versionId);
 
-            // Verifica se um arquivo foi enviado e o faz o upload
-    if ($request->hasFile('file')) {
-      $file = $request->file('file');
-      $path = $file->store('uploads', 'public'); // Armazena o arquivo na pasta 'uploads' e retorna o caminho
-  } else {
-      // Se nenhum arquivo foi enviado, você pode definir um valor padrão ou tratar como erro
-      return back()->with('error', 'Por favor, envie um arquivo');
+    // Encontre o documento original
+    $documento = Documento::findOrFail($version->documento_id);
+    
+    // Restaura os dados do documento para a versão
+    $documento->update([
+        'nome' => $version->nome,
+        'localizacao' => $version->localizacao,
+        'categoria' => $version->categoria,
+        'data' => $version->data,
+        'publico' => $version->publico,
+        'arquivo' => $version->arquivo,
+    ]);
+    
+    return to_route('gerenciamento.index')->with('mensagem.sucesso', "Documento restaurado para a versão de {$version->created_at}");
   }
 
-    // Atualize os dados do documento, excluindo o campo 'publico' para não sobrescrever
-    $documento->update([
-        'nome' => $request->input('nome'),
-        'localizacao' => $request->input('localizacao'),
-        'categoria' => $request->input('categoria'),
-        'data' => $request->input('data'),
-        'publico' => $publico,  // Atualize o campo 'publico'
-        'arquivo' => $path,     
-        'updated_at' => now(),  // Defina a data de atualização
-    ]);
-
-        return to_route('gerenciamento.index')->with('mensagem.sucesso', "Documento'{$documento->nome}' editado com sucesso");
-      }
-
-      //public function showUploadForm()
-      //{
-      //   return view('gerenciamento.upload');
-      //}
-
-     // public function handleUpload(Request $request){
-
-       // $request->validate([
-          //'file' => 'required│mimes:PDF, DOCX, PNG, JPG│max:2048',
-       // ]);
-
-      //  $file = $request->file('file');
-      //  $path = $file->store('uploads','public');
-//
-      //  return back()->with('sucess','Arquivo enviado com sucesso')->with('file', $path);
-
-      //}
 
 }

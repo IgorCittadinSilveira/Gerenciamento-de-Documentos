@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Dashboard') }}
+            {{ __('GERENCIAMENTO') }}
         </h2>
     </x-slot>
 
@@ -11,9 +11,13 @@
                 <div class="p-6 text-gray-900">
 
                     <a href="{{route('gerenciamento.index')}}">
-                    <button type="button" class="btn btn-primary">Gerenciar Documentos</button>
+                  Gerenciar Documentos
                     </a>
-                    
+                    <br><br>
+                    <a href="{{route('relatorios.index')}}">
+                     Gerar Relatório
+                    </a>
+
                 </div>
             </div>
         </div>
